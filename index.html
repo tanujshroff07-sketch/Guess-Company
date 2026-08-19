@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mark It — Guess the Company</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#151417;
+    --paper:#F3EFE6;
+    --card:#FBF9F3;
+    --gold:#E7A93C;
+    --gold-deep:#B9791F;
+    --teal:#2E7D74;
+    --coral:#D6553A;
+    --line: rgba(21,20,23,0.12);
+    --shadow: 0 1px 0 rgba(21,20,23,0.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 8%, rgba(231,169,60,0.10), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(46,125,116,0.12), transparent 45%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:48px 20px 80px;
+  }
+  .stage{ width:100%; max-width:640px; }
+
+  /* Header / scoreboard */
+  .masthead{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-bottom:28px; padding-bottom:16px;
+    border-bottom:2px solid var(--ink);
+  }
+  .brandname{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:34px; letter-spacing:-0.02em; line-height:1;
+  }
+  .brandname span{ color:var(--gold-deep); }
+  .tagline{ font-size:12.5px; color:var(--ink); opacity:0.55; margin-top:6px; letter-spacing:0.02em; }
+  .scoreboard{ text-align:right; font-family:'Space Grotesk', sans-serif; }
+  .scoreboard .num{ font-size:30px; font-weight:700; line-height:1; }
+  .scoreboard .lbl{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; opacity:0.5; margin-top:4px;}
+
+  /* Progress ticks */
+  .ticks{ display:flex; gap:6px; margin-bottom:26px; }
+  .tick{ flex:1; height:5px; border-radius:3px; background: rgba(21,20,23,0.1); overflow:hidden; }
+  .tick.done{ background: var(--ink); }
+  .tick.correct{ background: var(--teal); }
+  .tick.wrong{ background: var(--coral); }
+
+  /* Card */
+  .card{
+    background: var(--card);
+    border:1.5px solid var(--ink);
+    border-radius:2px;
+    padding:38px 32px 30px;
+    position:relative;
+    box-shadow: 6px 6px 0 rgba(21,20,23,0.9);
+  }
+  .round-eyebrow{
+    position:absolute; top:-13px; left:28px;
+    background:var(--ink); color:var(--paper);
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:12px;
+    padding:4px 12px; letter-spacing:0.08em; text-transform:uppercase;
+  }
+  .clue-frame{
+    min-height:150px;
+    display:flex; flex-direction:column; justify-content:center;
+    gap:14px;
+    margin-bottom:20px;
+  }
+  .clue-item{
+    display:flex; align-items:baseline; gap:12px;
+    opacity:0; transform:translateY(4px);
+    animation: clueIn .35s ease forwards;
+  }
+  .clue-item.locked{ opacity:0.28; animation:none; transform:none; }
+  @keyframes clueIn{ to{ opacity:1; transform:translateY(0); } }
+  .clue-num{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13px;
+    color:var(--gold-deep); border:1.5px solid var(--gold-deep);
+    width:24px; height:24px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .clue-item.locked .clue-num{ color:var(--ink); border-color:var(--line); }
+  .clue-text{ font-size:16.5px; line-height:1.5; }
+  .clue-item.locked .clue-text{ font-style:italic; }
+  .reveal-row{ display:flex; justify-content:center; margin-bottom:22px; }
+  .reveal-btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:12.5px;
+    background:transparent; color:var(--ink); border:1.5px dashed var(--ink);
+    padding:8px 16px; border-radius:20px; cursor:pointer; letter-spacing:0.03em;
+    opacity:0.7;
+  }
+  .reveal-btn:hover{ opacity:1; border-style:solid; }
+  .reveal-btn:disabled{ display:none; }
+  .prompt{
+    text-align:center; font-size:13px; opacity:0.5; margin-bottom:26px; letter-spacing:0.03em;
+  }
+
+  .options{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .opt{
+    font-family:'Inter', sans-serif;
+    font-weight:600; font-size:15.5px;
+    padding:15px 14px;
+    background:var(--paper);
+    border:1.5px solid var(--ink);
+    border-radius:2px;
+    cursor:pointer;
+    text-align:left;
+    transition: transform .08s ease;
+    box-shadow: 3px 3px 0 rgba(21,20,23,0.85);
+  }
+  .opt:hover:not(:disabled){ transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(21,20,23,0.85); }
+  .opt:active:not(:disabled){ transform: translate(1px,1px); box-shadow: 2px 2px 0 rgba(21,20,23,0.85); }
+  .opt:disabled{ cursor:default; }
+  .opt.correct{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  .opt.wrong{ background:var(--coral); color:#fff; border-color:var(--coral); }
+  .opt.reveal{ background:var(--teal); color:#fff; border-color:var(--teal); }
+
+  .footer-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:22px; min-height:36px;
+  }
+  .feedback{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px; }
+  .feedback.ok{ color:var(--teal); }
+  .feedback.no{ color:var(--coral); }
+  .next-btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13.5px;
+    background:var(--ink); color:var(--paper); border:none;
+    padding:11px 20px; border-radius:2px; cursor:pointer;
+    letter-spacing:0.03em;
+    opacity:0; pointer-events:none; transition:opacity .15s ease;
+  }
+  .next-btn.show{ opacity:1; pointer-events:auto; }
+  .next-btn:hover{ background:var(--gold-deep); }
+
+  /* Results */
+  .results{ text-align:center; padding:20px 10px 6px; }
+  .results .big{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:64px; line-height:1; margin:8px 0 2px; }
+  .results .out-of{ opacity:0.5; font-size:14px; margin-bottom:22px; }
+  .rank{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:18px; color:var(--gold-deep); margin-bottom:26px; }
+  .restart-btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px;
+    background:var(--ink); color:var(--paper); border:none;
+    padding:13px 26px; border-radius:2px; cursor:pointer; letter-spacing:0.03em;
+  }
+  .restart-btn:hover{ background:var(--gold-deep); }
+  .hidden{ display:none !important; }
+
+  @media (max-width:480px){
+    .card{ padding:30px 18px 24px; }
+    .options{ grid-template-columns:1fr; }
+    .brandname{ font-size:26px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="masthead">
+    <div>
+      <div class="brandname">Clue<span>Co.</span></div>
+      <div class="tagline">10 companies, three clues each. how fast do you know them?</div>
+    </div>
+    <div class="scoreboard">
+      <div class="num" id="scoreNum">0</div>
+      <div class="lbl">Score</div>
+    </div>
+  </div>
+
+  <div class="ticks" id="ticks"></div>
+
+  <div class="card" id="gameCard">
+    <div class="round-eyebrow" id="roundLabel">Round 01 / 10</div>
+    <div class="clue-frame" id="clueFrame"></div>
+    <div class="reveal-row"><button class="reveal-btn" id="revealBtn">Reveal next clue</button></div>
+    <div class="prompt">Who are we describing?</div>
+    <div class="options" id="options"></div>
+    <div class="footer-row">
+      <div class="feedback" id="feedback"></div>
+      <button class="next-btn" id="nextBtn">Next mark →</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultsCard">
+    <div class="results">
+      <div class="tagline">final tally</div>
+      <div class="big" id="finalScore">0/10</div>
+      <div class="out-of" id="finalPct">0% recognized</div>
+      <div class="rank" id="rankText"></div>
+      <button class="restart-btn" id="restartBtn">Play again</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- Simplified, hand-drawn-in-code marks (not pixel-accurate reproductions) ----
+const BRANDS = [
+  { name: "Apple", options: ["Apple","Pear Inc.","Orchard","Bitten"],
+    clues: [
+      "Founded in a Cupertino garage back in 1976.",
+      "Nearly every product it sells starts with a lowercase letter — iPhone, iPad, iMac.",
+      "Its emblem is a piece of fruit with a bite taken out of it."
+    ]},
+
+  { name: "Nike", options: ["Nike","Puma","Reebok","Fastline"],
+    clues: [
+      "Named after the Greek goddess of victory.",
+      "Its ad slogan simply tells you to 'just do it.'",
+      "A design student was paid $35 for its swoosh symbol in 1971."
+    ]},
+
+  { name: "McDonald's", options: ["McDonald's","Burger Barn","GoldenFry","Arches"],
+    clues: [
+      "Began as a single hamburger stand in California in the 1940s.",
+      "Its mascot is a red-haired, red-shoed clown.",
+      "Instantly recognized by a pair of golden arches shaped like the letter M."
+    ]},
+
+  { name: "Google", options: ["Google","Searchly","NetFind","PageOne"],
+    clues: [
+      "Its name is a misspelling of the number 'googol.'",
+      "Started as a research project by two Stanford PhD students in 1998.",
+      "Its homepage stays almost empty except a colorful wordmark and a search box."
+    ]},
+
+  { name: "Amazon", options: ["Amazon","MartHub","BoxDirect","Everything Co."],
+    clues: [
+      "Named after the world's largest river by water volume.",
+      "Started in a garage in 1994 selling nothing but books.",
+      "Its wordmark has a smiling arrow running from the A to the Z."
+    ]},
+
+  { name: "Netflix", options: ["Netflix","StreamBox","FlixOn","ReelPlay"],
+    clues: [
+      "Originally mailed discs to subscribers in bright red envelopes.",
+      "Pivoted from mail delivery to on-demand streaming in 2007.",
+      "Known for greenlighting a huge slate of binge-worthy original series."
+    ]},
+
+  { name: "Spotify", options: ["Spotify","SoundWave","TuneCircle","Playlyst"],
+    clues: [
+      "Founded in Sweden in 2006.",
+      "Popularized the 'freemium' model for streaming music.",
+      "Every December it sends listeners a personalized year-end recap."
+    ]},
+
+  { name: "Adidas", options: ["Adidas","Trefoil","StripeSport","Trident"],
+    clues: [
+      "Founded by a German shoemaker after a falling-out with his own brother.",
+      "That brother went on to start a rival sportswear brand of his own.",
+      "Its apparel is known for a three-stripe design running down the side."
+    ]},
+
+  { name: "X (Twitter)", options: ["X (Twitter)","Chirp","BirdPost","Threadly"],
+    clues: [
+      "Launched in 2006 with posts originally capped at 140 characters.",
+      "Its posts were once called 'tweets,' tied to a small bird mascot.",
+      "Rebranded from its bird identity to a single letter in 2023."
+    ]},
+
+  { name: "Starbucks", options: ["Starbucks","Green Bean Co.","BrewCircle","Roast&Co"],
+    clues: [
+      "Named after a first mate in the novel Moby-Dick.",
+      "Opened its first store in Seattle's Pike Place Market in 1971.",
+      "Its emblem features a twin-tailed mythical sea creature."
+    ]}
+];
+
+let order = [];
+let round = 0;
+let score = 0;
+let results = []; // 'correct' | 'wrong'
+
+const ticksEl = document.getElementById('ticks');
+const roundLabel = document.getElementById('roundLabel');
+const clueFrame = document.getElementById('clueFrame');
+const revealBtn = document.getElementById('revealBtn');
+const optionsEl = document.getElementById('options');
+const feedbackEl = document.getElementById('feedback');
+const nextBtn = document.getElementById('nextBtn');
+const scoreNum = document.getElementById('scoreNum');
+const gameCard = document.getElementById('gameCard');
+const resultsCard = document.getElementById('resultsCard');
+
+let cluesShown = 1;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function initGame(){
+  order = shuffle(BRANDS.map((_,i)=>i));
+  round = 0; score = 0; results = [];
+  scoreNum.textContent = '0';
+  resultsCard.classList.add('hidden');
+  gameCard.classList.remove('hidden');
+  buildTicks();
+  loadRound();
+}
+
+function buildTicks(){
+  ticksEl.innerHTML = '';
+  for(let i=0;i<BRANDS.length;i++){
+    const t = document.createElement('div');
+    t.className = 'tick';
+    t.id = 'tick-'+i;
+    ticksEl.appendChild(t);
+  }
+}
+
+function updateTick(i, state){
+  const t = document.getElementById('tick-'+i);
+  t.classList.add('done', state);
+}
+
+function loadRound(){
+  feedbackEl.textContent = '';
+  feedbackEl.className = 'feedback';
+  nextBtn.classList.remove('show');
+  cluesShown = 1;
+  revealBtn.disabled = false;
+  revealBtn.textContent = 'Reveal next clue';
+
+  const brandIdx = order[round];
+  const brand = BRANDS[brandIdx];
+  roundLabel.textContent = `Round ${String(round+1).padStart(2,'0')} / ${BRANDS.length}`;
+  renderClues(brand);
+
+  const opts = shuffle(brand.options);
+  optionsEl.innerHTML = '';
+  opts.forEach(optName=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.textContent = optName;
+    btn.addEventListener('click', ()=> handleAnswer(btn, optName, brand.name, brandIdx));
+    optionsEl.appendChild(btn);
+  });
+}
+
+function renderClues(brand){
+  clueFrame.innerHTML = '';
+  brand.clues.forEach((text, i)=>{
+    const row = document.createElement('div');
+    const locked = i >= cluesShown;
+    row.className = 'clue-item' + (locked ? ' locked' : '');
+    row.innerHTML = `<span class="clue-num">${i+1}</span><span class="clue-text">${locked ? 'Reveal to read this clue…' : text}</span>`;
+    clueFrame.appendChild(row);
+  });
+  if(cluesShown >= brand.clues.length){
+    revealBtn.disabled = true;
+  }
+}
+
+revealBtn.addEventListener('click', ()=>{
+  const brand = BRANDS[order[round]];
+  if(cluesShown < brand.clues.length){
+    cluesShown++;
+    renderClues(brand);
+  }
+});
+
+function handleAnswer(btn, chosen, correctName, brandIdx){
+  const allOpts = optionsEl.querySelectorAll('.opt');
+  allOpts.forEach(o=> o.disabled = true);
+  revealBtn.disabled = true;
+
+  const isCorrect = chosen === correctName;
+  const clueNote = cluesShown === 1 ? ' on the first clue' : ` after ${cluesShown} clues`;
+  if(isCorrect){
+    btn.classList.add('correct');
+    feedbackEl.textContent = `Correct${clueNote} — ${correctName}`;
+    feedbackEl.classList.add('ok');
+    score++;
+    scoreNum.textContent = score;
+    updateTick(brandIdx, 'correct');
+  } else {
+    btn.classList.add('wrong');
+    allOpts.forEach(o=>{ if(o.textContent === correctName) o.classList.add('reveal'); });
+    feedbackEl.textContent = 'Not quite — it\'s ' + correctName;
+    feedbackEl.classList.add('no');
+    updateTick(brandIdx, 'wrong');
+  }
+  nextBtn.classList.add('show');
+}
+
+nextBtn.addEventListener('click', ()=>{
+  round++;
+  if(round >= BRANDS.length){
+    showResults();
+  } else {
+    loadRound();
+  }
+});
+
+function showResults(){
+  gameCard.classList.add('hidden');
+  resultsCard.classList.remove('hidden');
+  const pct = Math.round((score/BRANDS.length)*100);
+  document.getElementById('finalScore').textContent = `${score}/${BRANDS.length}`;
+  document.getElementById('finalPct').textContent = `${pct}% recognized`;
+
+  let rank;
+  if(score === BRANDS.length) rank = "Perfect eye — you clock every mark.";
+  else if(score >= 8) rank = "Sharp — barely anything slips past you.";
+  else if(score >= 5) rank = "Solid — you know the big ones.";
+  else if(score >= 3) rank = "Getting there — the small shapes stick less.";
+  else rank = "Marks are trickier than they look, huh.";
+  document.getElementById('rankText').textContent = rank;
+}
+
+document.getElementById('restartBtn').addEventListener('click', initGame);
+
+initGame();
+</script>
+</body>
+</html>
